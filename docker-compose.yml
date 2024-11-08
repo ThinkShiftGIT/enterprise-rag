@@ -1,0 +1,16 @@
+services:
+  rag-system:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./templates:/app/templates
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - PYTHONPATH=/app
+      - DEBUG=true
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=DEBUG
+    command: uvicorn src.enterprise_rag.api.main:app --host 0.0.0.0 --port 8000 --log-level debug

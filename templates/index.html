@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG System Document Processor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Loading spinner -->
+  <style>
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 3px solid #3498db;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-8">
+  <div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">RAG System Document Processor</h1>
+      <p class="text-gray-600">Upload documents and ask questions about their content</p>
+    </div>
+
+    <!-- System Status -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6 fade-in">
+      <div class="flex justify-between items-center">
+        <div class="flex space-x-4 items-center">
+          <h3 class="font-semibold">System Status:</h3>
+          <span id="systemStatus" class="status-badge bg-green-100 text-green-800 px-3 py-1 rounded-full">Ready</span>
+          <div class="tooltip">
+            <span class="text-gray-400 hover:text-gray-600 cursor-help">ⓘ</span>
+            <span class="tooltiptext">System is ready to process documents</span>
+          </div>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span class="text-sm text-gray-600">Database:</span>
+          <span id="databaseStatus" class="status-badge bg-gray-100 text-gray-800 px-3 py-1 rounded-full">Empty</span>
+          <button onclick="clearDatabase()" 
+                  class="text-red-500 hover:text-red-700 text-sm px-3 py-1 border border-red-500 rounded hover:bg-red-50 transition duration-150">
+            Clear Database
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Section -->
+<!-- Previous HTML content remains the same until the upload form section -->
+
+<div class="bg-white rounded-lg shadow-md p-6">
+  <h2 class="text-xl font-semibold mb-4">1. Upload Document</h2>
+  <form id="uploadForm" enctype="multipart/form-data" class="space-y-4">
+      <div class="flex flex-col space-y-2">
+          <div class="flex items-center space-x-4">
+              <input type="file" 
+                     accept=".pdf" 
+                     class="flex-1 p-2 border rounded focus:outline-none focus:border-blue-500"
+                     id="documentInput"
+                     name="file"  <!-- Added name attribute -->
+                     required>
+              <button type="submit" 
+                      class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-150 flex items-center">
+                  <span id="uploadSpinner" class="spinner hidden"></span>
+                  <span>Upload & Process</span>
+              </button>
+          </div>
+          <div class="flex justify-between text-sm">
+              <div class="text-gray-500">
+                  Current file: <span id="currentFile" class="font-medium">None</span>
+              </div>
+              <div class="text-gray-500">
+                  Size limit: <span class="font-medium">10MB</span>
+              </div>
+          </div>
+          <div id="uploadStatus" class="text-sm"></div>
+      </div>
+  </form>
+</div>
+
+<!-- After the Upload Document section, add this: -->
+
+<!-- Query Section -->
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+  <h2 class="text-xl font-semibold mb-4">2. Test Queries</h2>
+  <div class="space-y-4">
+      <div class="flex space-x-4">
+          <input type="text" 
+                 id="queryInput" 
+                 placeholder="Enter your question..."
+                 class="flex-1 p-2 border rounded focus:outline-none focus:border-green-500">
+          <button onclick="sendQuery()" 
+                  class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition duration-150 flex items-center">
+              <span id="querySpinner" class="spinner hidden"></span>
+              <span>Ask Question</span>
+          </button>
+      </div>
+
+      <!-- Sample Queries -->
+      <div class="mt-4">
+          <p class="text-sm text-gray-600 mb-2">Sample queries:</p>
+          <div class="flex flex-wrap gap-2">
+              <button onclick="useQuery('What are the safety protocols for radiation exposure?')" 
+                      class="text-sm bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition duration-150">
+                  Safety protocols
+              </button>
+              <button onclick="useQuery('What training is required for radiation safety?')"
+                      class="text-sm bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition duration-150">
+                  Training requirements
+              </button>
+              <button onclick="useQuery('What are the emergency procedures?')"
+                      class="text-sm bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition duration-150">
+                  Emergency procedures
+              </button>
+              <button onclick="useQuery('What protective equipment is required?')"
+                      class="text-sm bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition duration-150">
+                  Required equipment
+              </button>
+              <button onclick="useQuery('What are the radiation exposure limits?')"
+                      class="text-sm bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition duration-150">
+                  Exposure limits
+              </button>
+          </div>
+      </div>
+  </div>
+</div>
+
+<!-- Results Section -->
+<div class="bg-white rounded-lg shadow-md p-6">
+  <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-semibold">Results</h2>
+      <span id="resultStatus" class="text-sm text-gray-500"></span>
+  </div>
+  <div id="resultsContent" class="space-y-4">
+      <p class="text-gray-600">Query results will appear here...</p>
+  </div>
+</div>
+
+<!-- Add this JavaScript for query handling -->
+<script>
+async function sendQuery() {
+  const query = document.getElementById('queryInput').value.trim();
+  const resultsDiv = document.getElementById('resultsContent');
+  const spinner = document.getElementById('querySpinner');
+  const resultStatus = document.getElementById('resultStatus');
+
+  if (!query) {
+      resultsDiv.innerHTML = '<p class="text-red-500">Please enter a query</p>';
+      return;
+  }
+
+  try {
+      spinner.classList.remove('hidden');
+      resultStatus.textContent = 'Processing query...';
+      resultsDiv.innerHTML = '<p class="text-blue-500">Processing query...</p>';
+
+      const response = await fetch('/query', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ query: query })
+      });
+
+      if (!response.ok) {
+          throw new Error(`Query failed: ${response.statusText}`);
+      }
+
+      const results = await response.json();
+      displayResults(results);
+      resultStatus.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+
+  } catch (error) {
+      resultsDiv.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+      resultStatus.textContent = 'Error occurred';
+      console.error('Query error:', error);
+  } finally {
+      spinner.classList.add('hidden');
+  }
+}
+
+function useQuery(query) {
+  document.getElementById('queryInput').value = query;
+  sendQuery();
+}
+
+function displayResults(results) {
+  const resultsDiv = document.getElementById('resultsContent');
+  
+  if (!results) {
+      resultsDiv.innerHTML = '<p class="text-red-500">No results received</p>';
+      return;
+  }
+
+  try {
+      let html = '';
+      
+      if (results.summary) {
+          html += `
+              <div class="bg-blue-50 p-4 rounded mb-4">
+                  <h3 class="font-semibold">Summary</h3>
+                  <p>${results.summary}</p>
+              </div>
+          `;
+      }
+
+      if (results.categories) {
+          for (const [category, items] of Object.entries(results.categories)) {
+              html += `
+                  <div class="border rounded p-4 mb-4">
+                      <h3 class="font-semibold text-lg mb-2">${category}</h3>
+                      ${items.map(item => `
+                          <div class="bg-gray-50 p-3 rounded mb-2">
+                              <div class="flex justify-between items-center mb-2">
+                                  <span class="font-medium">Confidence: ${item.confidence || 'N/A'}</span>
+                              </div>
+                              <p class="mb-2 whitespace-pre-line">${item.text}</p>
+                              ${item.metadata ? `
+                                  <div class="text-sm text-gray-500">
+                                      Source: ${item.metadata.source || 'Unknown'}
+                                      ${item.metadata.page ? ` (Page ${item.metadata.page})` : ''}
+                                  </div>
+                              ` : ''}
+                          </div>
+                      `).join('')}
+                  </div>
+              `;
+          }
+      } else {
+          html += '<p class="text-gray-600">No matching information found</p>';
+      }
+
+      resultsDiv.innerHTML = html;
+  } catch (error) {
+      resultsDiv.innerHTML = `<p class="text-red-500">Error displaying results: ${error.message}</p>`;
+      console.error('Display error:', error);
+  }
+}
+
+// Handle Enter key in query input
+document.getElementById('queryInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+      sendQuery();
+  }
+});
+</script>
+
+<!-- Update the JavaScript for form handling -->
+<script>
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  console.log('Form submission started');  // Debug log
+
+  const fileInput = document.getElementById('documentInput');
+  const file = fileInput.files[0];
+  const statusDiv = document.getElementById('uploadStatus');
+  const spinner = document.getElementById('uploadSpinner');
+
+  // Clear previous status
+  statusDiv.innerHTML = '';
+
+  // Validate file
+  if (!file) {
+      statusDiv.innerHTML = '<p class="text-red-500">Please select a file</p>';
+      return;
+  }
+
+  if (!file.type.includes('pdf')) {
+      statusDiv.innerHTML = '<p class="text-red-500">Please select a PDF file</p>';
+      return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {  // 10MB limit
+      statusDiv.innerHTML = '<p class="text-red-500">File size must be less than 10MB</p>';
+      return;
+  }
+
+  try {
+      // Show loading state
+      spinner.classList.remove('hidden');
+      statusDiv.innerHTML = '<p class="text-blue-500">Uploading file...</p>';
+
+      // Create FormData and append file
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Log FormData content for debugging
+      console.log('File being uploaded:', file.name);
+      
+      // Make the upload request
+      const response = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+      });
+
+      console.log('Upload response status:', response.status);  // Debug log
+
+      if (!response.ok) {
+          throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('Upload result:', result);  // Debug log
+
+      // Update UI with success
+      statusDiv.innerHTML = `<p class="text-green-500">${result.message}</p>`;
+      document.getElementById('currentFile').textContent = file.name;
+      
+  } catch (error) {
+      console.error('Upload error:', error);  // Debug log
+      statusDiv.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+  } finally {
+      spinner.classList.add('hidden');
+  }
+});
+
+// Add file input change handler for immediate feedback
+document.getElementById('documentInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const currentFileSpan = document.getElementById('currentFile');
+  currentFileSpan.textContent = file ? file.name : 'None';
+});
+</script>
